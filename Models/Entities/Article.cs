@@ -44,6 +44,10 @@ namespace DaNangSafeMap.Models.Entities
 
         public bool? IsFeatured { get; set; } = false;
 
+        public bool? IsFocus { get; set; } = false;
+
+        public bool? IsEvent { get; set; } = false;
+
         public int? ViewCount { get; set; } = 0;
 
         public string? RejectReason { get; set; }
