@@ -322,6 +322,7 @@ namespace DaNangSafeMap.Services.Implementations
             article.Summary = updated.Summary;
             article.Content = SanitizeHtml(updated.Content);
             article.ImageUrl = updated.ImageUrl ?? article.ImageUrl;
+            article.VideoUrl = updated.VideoUrl ?? article.VideoUrl;
             
             // Ensure Category exists
             if (await _db.Categories.AnyAsync(c => c.Id == updated.CategoryId))
@@ -346,7 +347,7 @@ namespace DaNangSafeMap.Services.Implementations
         }
 
         public async Task<bool> AdminUpdateArticleAsync(int id, string title, string? summary, string content,
-            int categoryId, string? imageUrl, bool isFeatured)
+            int categoryId, string? imageUrl, string? videoUrl, bool isFeatured)
         {
             var article = await _db.Articles.FirstOrDefaultAsync(a => a.Id == id && a.DeletedAt == null);
             if (article == null) return false;
@@ -357,6 +358,7 @@ namespace DaNangSafeMap.Services.Implementations
             article.CategoryId = categoryId;
             article.IsFeatured = isFeatured;
             if (!string.IsNullOrEmpty(imageUrl)) article.ImageUrl = imageUrl;
+            if (!string.IsNullOrEmpty(videoUrl)) article.VideoUrl = videoUrl;
             article.UpdatedAt = DateTime.Now;
             article.Slug = GenerateSlug(title);
 

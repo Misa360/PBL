@@ -194,8 +194,9 @@ namespace DaNangSafeMap.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequestSizeLimit(524288000)]
         public async Task<IActionResult> Create(string title, string? summary, string content,
-            int categoryId, IFormFile? image, bool isFeatured = false)
+            int categoryId, IFormFile? image, IFormFile? video, bool isFeatured = false)
         {
             var userId = GetCurrentUserId();
             var role = GetCurrentUserRole();
@@ -221,6 +222,26 @@ namespace DaNangSafeMap.Controllers
                 await image.CopyToAsync(stream);
                 imageUrl = $"/uploads/articles/{fileName}";
             }
+            string? videoUrl = null;
+            if (video != null && video.Length > 0)
+            {
+                var (isValid, error) = ValidateVideo(video);
+                if (!isValid)
+                {
+                    ModelState.AddModelError("video", error ?? "Video không hợp lệ");
+                    ViewBag.Categories = await _articleService.GetCategoriesAsync();
+                    ViewBag.Role = role;
+                    return View("Create");
+                }
+
+                var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "videos");
+                Directory.CreateDirectory(uploadsDir);
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(video.FileName)}";
+                var filePath = Path.Combine(uploadsDir, fileName);
+                using var stream = new FileStream(filePath, FileMode.Create);
+                await video.CopyToAsync(stream);
+                videoUrl = $"/uploads/videos/{fileName}";
+            }
 
             var article = new Article
             {
@@ -230,6 +251,7 @@ namespace DaNangSafeMap.Controllers
                 CategoryId = categoryId,
                 AuthorId = userId.Value,
                 ImageUrl = imageUrl,
+                VideoUrl = videoUrl,
                 IsFeatured = (role == "Admin") ? isFeatured : false,
                 Status = (role == "Admin") ? 2 : 1 // Admin auto approve
             };
@@ -263,8 +285,9 @@ namespace DaNangSafeMap.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequestSizeLimit(524288000)]
         public async Task<IActionResult> Edit(int id, string title, string? summary, string content,
-            int categoryId, IFormFile? image, bool isFeatured = false)
+            int categoryId, IFormFile? image, IFormFile? video, bool isFeatured = false)
         {
             var userId = GetCurrentUserId();
             var role = GetCurrentUserRole();
@@ -294,6 +317,26 @@ namespace DaNangSafeMap.Controllers
                 await image.CopyToAsync(stream);
                 imageUrl = $"/uploads/articles/{fileName}";
             }
+            string? videoUrl = existing.VideoUrl;
+            if (video != null && video.Length > 0)
+            {
+                var (isValid, error) = ValidateVideo(video);
+                if (!isValid)
+                {
+                    ModelState.AddModelError("video", error ?? "Video không hợp lệ");
+                    ViewBag.Categories = await _articleService.GetCategoriesAsync();
+                    ViewBag.Role = role;
+                    return View("Edit", existing);
+                }
+
+                var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "videos");
+                Directory.CreateDirectory(uploadsDir);
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(video.FileName)}";
+                var filePath = Path.Combine(uploadsDir, fileName);
+                using var stream = new FileStream(filePath, FileMode.Create);
+                await video.CopyToAsync(stream);
+                videoUrl = $"/uploads/videos/{fileName}";
+            }
 
             var updated = new Article
             {
@@ -302,6 +345,7 @@ namespace DaNangSafeMap.Controllers
                 Content = content,
                 CategoryId = categoryId,
                 ImageUrl = imageUrl,
+                VideoUrl = videoUrl,
             };
 
             // Admin có quyền cập nhật bất kỳ bài nào (kể cả của user khác).
@@ -309,7 +353,7 @@ namespace DaNangSafeMap.Controllers
             // để bypass author-check, và cập nhật riêng nội dung qua context.
             if (role == "Admin")
             {
-                await _articleService.AdminUpdateArticleAsync(id, title, summary, content, categoryId, imageUrl, isFeatured);
+                await _articleService.AdminUpdateArticleAsync(id, title, summary, content, categoryId, imageUrl, videoUrl, isFeatured);
                 TempData["AdminMsg"] = "Đã cập nhật bài viết.";
                 return RedirectToAction("Manage", "Article");
             }
@@ -557,6 +601,7 @@ namespace DaNangSafeMap.Controllers
         // TINYMCE UPLOAD MEDIA
         // ══════════════════════════════════════════════
         [HttpPost]
+        [RequestSizeLimit(524288000)]
         public async Task<IActionResult> UploadMedia(IFormFile file)
         {
             var userId = GetCurrentUserId();
@@ -626,6 +671,20 @@ namespace DaNangSafeMap.Controllers
 
             if (image.Length > 5 * 1024 * 1024) // 5MB
                 return (false, "Dung lượng ảnh không được vượt quá 5MB");
+
+            return (true, null);
+        }
+
+        private (bool isValid, string? error) ValidateVideo(IFormFile video)
+        {
+            var allowedExtensions = new[] { ".mp4", ".webm", ".avi", ".mov", ".mkv" };
+            var extension = Path.GetExtension(video.FileName).ToLower();
+
+            if (!allowedExtensions.Contains(extension))
+                return (false, "Chỉ chấp nhận định dạng .mp4, .webm, .avi, .mov, .mkv");
+
+            if (video.Length > 500 * 1024 * 1024) // 500MB
+                return (false, "Dung lượng video không được vượt quá 500MB");
 
             return (true, null);
         }

@@ -10,7 +10,7 @@ function loadPage(page) {
 		container.find('.loader').remove();
 	});
 
-	img.attr('src', '/files/pages/' + (page - 2) + '.jpg');
+	img.attr('src', '/files/pages/' + page + '.jpg');
 
 }
 
@@ -21,7 +21,7 @@ function addPage(page, book) {
 	var element = $('<div />', {});
 
 	if (book.turn('addPage', element, page)) {
-		if (page < 28) {
+		if (page <= 10) {
 			element.html('<div class="gradient"></div><div class="loader"></div>');
 			loadPage(page);
 		}

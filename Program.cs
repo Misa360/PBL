@@ -8,6 +8,14 @@ using DaNangSafeMap.Services.Implementations;
 using DaNangSafeMap.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 524288000; // 500MB
+});
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 524288000; // 500MB
+});
 
 // ─── 1. KẾT NỐI MYSQL ────────────────────────────────────────────────────────
 // Đọc connection string từ appsettings.json và kết nối MySQL
